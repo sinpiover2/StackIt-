@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Tower of Hanoi (No Solve Button)</title>
+<style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 1rem; }
+    header { margin-bottom: 1rem; }
+    .note { font-size: 0.9rem; opacity: 0.8; }
+  </style>
+</head>
+<body>
+<header>
+<h1>Stack It!e</h1>
+<p class="note">Remember to think about The Learning Space!</p>
+</header>
+<!-- The original game script -->
+<script src="https://www.mathsisfun.com/numbers/images/hanoi.js"></script>
+<!-- After the game loads, remove any UI that triggers 'Solve' -->
+<script>
+    (function removeSolve() {
+      const tryRemove = () => {
+        // General approach: hide any element whose text contains 'Solve' (case-insensitive)
+        // and any link/button pointing to a solver page.
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null);
+        const toRemove = [];
+        while (walker.nextNode()) {
+          const el = walker.currentNode;
+          const text = (el.textContent || "").trim().toLowerCase();
+          const href = (el.getAttribute && el.getAttribute("href")) || "";
+          if (
+            text === "solve" ||
+            (text.includes("solve") && (el.tagName === "BUTTON" || el.tagName === "A")) ||
+            href.includes("hanoi_solver") ||
+            href.includes("towerofhanoi-solver") ||
+            el.id?.toLowerCase?.() === "solve" ||
+            (el.className && String(el.className).toLowerCase().includes("solve"))
+          ) {
+            toRemove.push(el);
+          }
+        }
+        toRemove.forEach(el => el.remove());
+
+        // As a fallback, disable any click handlers that might auto-solve
+        // by intercepting common names on the window or elements.
+        // (This is defensive; if nothing matches, it does nothing.)
+        const noop = () => false;
+        ["solve","autoSolve","autosolve","doSolve"].forEach(name => {
+          try {
+            if (typeof window[name] === "function") { window[name] = noop; }
+          } catch (e) {}
+        });
+      };
+
+      // Run after DOM is ready, and also again shortly after in case
+      // the game injects its controls asynchronously.
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", tryRemove);
+      } else {
+        tryRemove();
+      }
+      setTimeout(tryRemove, 400);
+      setTimeout(tryRemove, 1000);
+      setTimeout(tryRemove, 2000);
+    })();
+  </script>
+<script>
+(function leanTweaks(){
+  function label(el){
+    const t = (el.textContent || "").trim().toLowerCase();
+    const a = (el.getAttribute && el.getAttribute("aria-label")) || "";
+    const v = (el.value || "");
+    return (a || v || t).trim().toLowerCase();
+  }
+  function hideSolveLog(){
+    try {
+      const candidates = document.querySelectorAll('button, a, input[type="button"], input[type="submit"]');
+      candidates.forEach(el => {
+        const l = label(el);
+        if (l === "solve" || l === "log") {
+          el.style.display = "none";
+          el.style.pointerEvents = "none";
+          el.setAttribute("aria-hidden", "true");
+          if ("disabled" in el) el.disabled = true;
+        }
+      });
+    } catch(e){}
+  }
+
+  function scrubMinMoves(root){
+    try {
+      const walk = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT, null);
+      let n;
+      while ((n = walk.nextNode())) {
+        const s = (n.nodeValue || "").toLowerCase();
+        if (!s) continue;
+        if (s.includes("minimum") && s.includes("move")) {
+          // Hide a small parent container if possible, otherwise redact text only
+          let el = n.parentNode, steps = 0, hidden = false;
+          while (el && steps < 2) {
+            const txt = (el.textContent || "").trim();
+            if (txt.length <= 60 && /move/i.test(txt)) {
+              el.style.display = "none";
+              hidden = true;
+              break;
+            }
+            el = el.parentElement; steps++;
+          }
+          if (!hidden) {
+            n.nodeValue = n.nodeValue.replace(/(minimum\s+\w*\s*moves?\s*:?\s*\d+\b)/gi, "").replace(/\s{2,}/g, " ").trim();
+          }
+        }
+      }
+    } catch(e){}
+  }
+
+  function initial(){
+    hideSolveLog();
+    scrubMinMoves(document.body);
+    setTimeout(hideSolveLog, 350);
+    setTimeout(() => scrubMinMoves(document.body), 500);
+  }
+
+  // Wire only the disk slider to rescrub (and maybe "new game" button if present)
+  function wireControls(){
+    const range = document.querySelector('input[type="range"]');
+    if (range) {
+      range.addEventListener('input', () => {
+        // give the external script a beat to update, then scrub
+        setTimeout(() => scrubMinMoves(document.body), 150);
+        setTimeout(() => scrubMinMoves(document.body), 450);
+      }, { passive: true });
+      range.addEventListener('change', () => {
+        setTimeout(() => scrubMinMoves(document.body), 150);
+      }, { passive: true });
+    }
+    const newBtn = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]'))
+      .find(b => /new\s*game/i.test((b.textContent||b.value||"")));
+    if (newBtn) {
+      newBtn.addEventListener('click', () => setTimeout(() => scrubMinMoves(document.body), 250));
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => { initial(); wireControls(); });
+  } else {
+    initial(); wireControls();
+  }
+})();
+</script></body>
+</html>
